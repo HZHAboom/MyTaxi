@@ -10,7 +10,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.widget.ImageView;
 
 import com.dalimao.mytaxi.R;
-import com.dalimao.mytaxi.main.MainActivity;
+import com.dalimao.mytaxi.main.view.MainActivity;
 
 /**
  * Created by vigroid on 11/13/17.
