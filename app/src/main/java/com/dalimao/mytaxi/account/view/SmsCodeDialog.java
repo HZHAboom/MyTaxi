@@ -17,6 +17,7 @@ import com.dalimao.mytaxi.account.model.AccountManagerImpl;
 import com.dalimao.mytaxi.account.model.IAccountManager;
 import com.dalimao.mytaxi.account.presenter.ISmsCodeDialogPresenter;
 import com.dalimao.mytaxi.account.presenter.SmsCodeDialogPresenterImpl;
+import com.dalimao.mytaxi.common.databus.RxBus;
 import com.dalimao.mytaxi.common.http.IHttpClient;
 import com.dalimao.mytaxi.common.http.impl.OkHttpClientImpl;
 import com.dalimao.mytaxi.common.storage.SharedPreferencesDao;
@@ -120,8 +121,15 @@ public class SmsCodeDialog extends Dialog implements ISmsCodeDialogView{
         mErrorView = findViewById(R.id.error);
         mErrorView.setVisibility(View.GONE);
         initListeners();
+        RxBus.getInstance().register(mPresenter);
         //请求下发验证码
         requestSendSmsCode();
+    }
+
+    @Override
+    public void dismiss() {
+        super.dismiss();
+        RxBus.getInstance().unRegister(mPresenter);
     }
 
     /**

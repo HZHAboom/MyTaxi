@@ -1,0 +1,48 @@
+package com.dalimao.mytaxi.common.lbs;
+
+import android.graphics.Bitmap;
+import android.os.Bundle;
+import android.view.View;
+
+/**
+ * Created by Administrator on 2018/4/26 0026.
+ */
+
+public interface ILbsLayer {
+
+    /**
+     * 获取地图
+     */
+    View getMapView();
+
+    /**
+     * 设置位置变化监听
+     */
+    void setLocationChangeListener(CommonLocationChangeListener locationChangeListener);
+
+    /**
+     * 设置定位图标
+     */
+    void setLocationRes(int res);
+    /**
+     * 添加，更新标记点，包括位置、角度（通过id识别）
+     */
+    void addOrUpdateMarker(LocationInfo locationInfo, Bitmap bitmap);
+
+    /**
+     * 生命周期函数
+     */
+    void onCreate(Bundle state);
+    void onResume();
+    void onSaveInstanceState(Bundle outState);
+    void onPause();
+    void onDestroy();
+
+    interface CommonLocationChangeListener{
+        void onLocationChanged(LocationInfo locationInfo);
+        void onLocation(LocationInfo locationInfo);
+    }
+
+    // TODO: 2018/4/26 0026  路径绘制
+    // TODO: 2018/4/26 0026  POI搜索
+}
