@@ -2,6 +2,7 @@ package com.dalimao.mytaxi.main.view;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -14,6 +15,7 @@ import com.dalimao.mytaxi.R;
 import com.dalimao.mytaxi.account.view.PhoneInputDialog;
 import com.dalimao.mytaxi.common.databus.RxBus;
 import com.dalimao.mytaxi.common.http.IHttpClient;
+import com.dalimao.mytaxi.common.http.api.API;
 import com.dalimao.mytaxi.common.http.impl.OkHttpClientImpl;
 import com.dalimao.mytaxi.common.lbs.GaodeLbsLayerImpl;
 import com.dalimao.mytaxi.common.lbs.ILbsLayer;
@@ -25,6 +27,12 @@ import com.dalimao.mytaxi.main.model.MainManagerImpl;
 import com.dalimao.mytaxi.main.presenter.IMainPresenter;
 import com.dalimao.mytaxi.main.presenter.MainPresenterImpl;
 
+import java.util.List;
+
+import cn.bmob.push.BmobPush;
+import cn.bmob.v3.Bmob;
+import cn.bmob.v3.BmobInstallation;
+
 /**
  * 1.检查本地记录（登录态检查）
  * 2.若用户没登录则登录
@@ -33,6 +41,9 @@ import com.dalimao.mytaxi.main.presenter.MainPresenterImpl;
  * -------地图初始化-------
  * 1 地图接入
  * 2 定位自己的位置，显示蓝点
+ * 3 使用 Marker 标记当前位置和方向
+ * 4 地图封装
+ * -------获取附近司机--------
  */
 public class MainActivity extends AppCompatActivity implements IMainView {
 
@@ -40,6 +51,8 @@ public class MainActivity extends AppCompatActivity implements IMainView {
     private static final int READ_PHONE_STATE_REQUEST_CODE = 100;
     private IMainPresenter mPresenter;
     private ILbsLayer mLbsLayer;
+    private Bitmap mDriverBit;
+    private String mPushKey;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,11 +88,43 @@ public class MainActivity extends AppCompatActivity implements IMainView {
             public void onLocation(LocationInfo locationInfo) {
                 // 首次定位，添加当前位置的标记
                 mLbsLayer.addOrUpdateMarker(locationInfo,
-                        BitmapFactory.decodeResource(getResources(),R.drawable.navi_map_gps_locked));
+                        BitmapFactory.decodeResource(getResources(),R.mipmap.navi_map_gps_locked));
+                // 获取附近司机
+                getNearDrivers(locationInfo.getLatitude(),locationInfo.getLongitude());
+                //上报当前位置
+                updateLocationToServer(locationInfo);
             }
         });
         ViewGroup mapViewContainer = (ViewGroup) findViewById(R.id.activity_main);
         mapViewContainer.addView(mLbsLayer.getMapView());
+
+        // 推送服务
+        // 初始化BmobSDK
+        Bmob.initialize(this, API.Config.getAppId());
+        // 使用推送服务时的初始化操作
+        BmobInstallation installation = BmobInstallation.getCurrentInstallation(this);
+        installation.save();
+        mPushKey = installation.getInstallationId();
+        //启动推送服务
+        BmobPush.startWork(this);
+    }
+
+    /**
+     * 上报当前位置
+     * @param locationInfo
+     */
+    private void updateLocationToServer(LocationInfo locationInfo) {
+        locationInfo.setKey(mPushKey);
+        mPresenter.updateLocationToServer(locationInfo);
+    }
+
+    /**
+     * 获取附近司机
+     * @param latitude
+     * @param longitude
+     */
+    private void getNearDrivers(double latitude, double longitude) {
+        mPresenter.fetchNearDrivers(latitude,longitude);
     }
 
     /**
@@ -156,6 +201,25 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                 showPhoneInputDialog();
                 break;
         }
+    }
+
+    /**
+     * 显示附近司机
+     * @param data
+     */
+    @Override
+    public void showNears(List<LocationInfo> data) {
+        for (LocationInfo locationInfo : data) {
+            showLocationChange(locationInfo);
+        }
+    }
+
+    @Override
+    public void showLocationChange(LocationInfo locationInfo) {
+        if (mDriverBit == null || mDriverBit.isRecycled()){
+            mDriverBit = BitmapFactory.decodeResource(getResources(),R.mipmap.car);
+        }
+        mLbsLayer.addOrUpdateMarker(locationInfo,mDriverBit);
     }
 
 }

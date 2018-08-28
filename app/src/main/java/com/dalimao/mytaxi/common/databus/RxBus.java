@@ -55,15 +55,24 @@ public class RxBus {
                 .subscribe(new Consumer() {
                     @Override
                     public void accept(Object data) throws Exception {
-                        for (Object subscriber :
-                                mSubscribers) {
-                            //扫描注解，将数据发送到注册的对象的标记方法
-                            if (data!=null){
-                                callMethodByAnnotiation(subscriber,data);
-                            }
+                        if (data == null){
+                            return;
                         }
+                        send(data);
+
                     }
                 });
+    }
+
+    /**
+     * 发送数据
+     * @param data
+     */
+    public void send(Object data) {
+        for (Object subscriber : mSubscribers) {
+            //扫描注解，将数据发送到注册的对象的标记方法
+            callMethodByAnnotiation(subscriber,data);
+        }
     }
 
     /**

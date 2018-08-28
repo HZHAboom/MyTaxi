@@ -2,7 +2,10 @@ package com.dalimao.mytaxi.main.presenter;
 
 import com.dalimao.mytaxi.account.model.response.LoginResponse;
 import com.dalimao.mytaxi.common.databus.RegisterBus;
+import com.dalimao.mytaxi.common.http.biz.BaseBizResponse;
+import com.dalimao.mytaxi.common.lbs.LocationInfo;
 import com.dalimao.mytaxi.main.model.IMainManager;
+import com.dalimao.mytaxi.main.model.response.NearDriversResponse;
 import com.dalimao.mytaxi.main.view.IMainView;
 
 /**
@@ -44,6 +47,16 @@ public class MainPresenterImpl implements IMainPresenter {
         mMainManager.loginByToken();
     }
 
+    @Override
+    public void fetchNearDrivers(double latitude, double longitude) {
+        mMainManager.fetchNearDrivers(latitude,longitude);
+    }
+
+    @Override
+    public void updateLocationToServer(LocationInfo locationInfo) {
+        mMainManager.updateLocationToServer(locationInfo);
+    }
+
     @RegisterBus
     public void loginByTokenResponse(LoginResponse response){
         switch (response.getCode()){
@@ -57,5 +70,17 @@ public class MainPresenterImpl implements IMainPresenter {
                 mView.showError(IMainManager.SERVER_FAIL,"");
                 break;
         }
+    }
+
+    @RegisterBus
+    public void onNearDriversResponse(NearDriversResponse response){
+        if (response.getCode() == BaseBizResponse.STATE_OK){
+            mView.showNears(response.getData());
+        }
+    }
+
+    @RegisterBus
+    public void onLocationInfo(LocationInfo locationInfo){
+        mView.showLocationChange(locationInfo);
     }
 }

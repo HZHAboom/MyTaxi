@@ -2,6 +2,8 @@ package com.dalimao.mytaxi.main.model;
 
 import android.os.Handler;
 
+import com.dalimao.mytaxi.common.lbs.LocationInfo;
+
 /**
  * Created by Administrator on 2018/4/14 0014.
  */
@@ -18,4 +20,8 @@ public interface IMainManager {
     void setHandler(Handler handler);
 
     void loginByToken();
+
+    void fetchNearDrivers(double latitude,double longitude);
+
+    void updateLocationToServer(LocationInfo locationInfo);
 }
