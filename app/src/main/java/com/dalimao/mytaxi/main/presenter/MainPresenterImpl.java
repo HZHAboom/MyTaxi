@@ -6,6 +6,7 @@ import com.dalimao.mytaxi.common.http.biz.BaseBizResponse;
 import com.dalimao.mytaxi.common.lbs.LocationInfo;
 import com.dalimao.mytaxi.main.model.IMainManager;
 import com.dalimao.mytaxi.main.model.response.NearDriversResponse;
+import com.dalimao.mytaxi.main.model.response.OrderStateOptResponse;
 import com.dalimao.mytaxi.main.view.IMainView;
 
 /**
@@ -57,6 +58,11 @@ public class MainPresenterImpl implements IMainPresenter {
         mMainManager.updateLocationToServer(locationInfo);
     }
 
+    @Override
+    public void callDriver(String key, float cost, LocationInfo startLocation, LocationInfo endLocation) {
+        mMainManager.callDriver(key, cost, startLocation, endLocation);
+    }
+
     @RegisterBus
     public void loginByTokenResponse(LoginResponse response){
         switch (response.getCode()){
@@ -82,5 +88,18 @@ public class MainPresenterImpl implements IMainPresenter {
     @RegisterBus
     public void onLocationInfo(LocationInfo locationInfo){
         mView.showLocationChange(locationInfo);
+    }
+
+    //订单状态响应
+    @RegisterBus
+    public void onOrderOptResponse(OrderStateOptResponse response){
+        if (response.getState() == OrderStateOptResponse.ORDER_STATE_CREATE){
+            //呼叫司机
+            if (response.getCode() == BaseBizResponse.STATE_OK){
+                mView.showCallDriverSuc();
+            }else{
+                mView.showCallDriverFail();
+            }
+        }
     }
 }

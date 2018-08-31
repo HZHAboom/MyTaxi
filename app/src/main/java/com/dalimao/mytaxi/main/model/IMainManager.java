@@ -24,4 +24,7 @@ public interface IMainManager {
     void fetchNearDrivers(double latitude,double longitude);
 
     void updateLocationToServer(LocationInfo locationInfo);
+
+    //呼叫司机
+    void callDriver(String key, float cost, LocationInfo startLocation, LocationInfo endLocation);
 }

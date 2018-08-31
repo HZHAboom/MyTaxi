@@ -24,4 +24,14 @@ public interface IMainView{
      * @param locationInfo
      */
     void showLocationChange(LocationInfo locationInfo);
+
+    /**
+     * 显示呼叫成功发出
+     */
+    void showCallDriverSuc();
+
+    /**
+     * 显示呼叫未成功发出
+     */
+    void showCallDriverFail();
 }
