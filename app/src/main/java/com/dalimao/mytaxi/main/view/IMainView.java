@@ -1,6 +1,7 @@
 package com.dalimao.mytaxi.main.view;
 
 import com.dalimao.mytaxi.common.lbs.LocationInfo;
+import com.dalimao.mytaxi.main.model.bean.Order;
 
 import java.util.List;
 
@@ -34,4 +35,52 @@ public interface IMainView{
      * 显示呼叫未成功发出
      */
     void showCallDriverFail();
+
+    /**
+     * 取消订单成功
+     */
+    void showCancelSuc();
+
+    /**
+     * 取消订单失败
+     */
+    void showCancelFail();
+
+    /**
+     * 显示司机接单
+     * @param currentOrder
+     */
+    void showDriverAcceptOrder(Order currentOrder);
+
+    /**
+     * 司机到达上车地点
+     * @param currentOrder
+     */
+    void showDriverArriveStart(Order currentOrder);
+
+    /**
+     * 更新司机到上车点的路径
+     * @param currentOrder
+     */
+    void showStartDrive(Order currentOrder);
+
+    /**
+     * 显示到达终点
+     * @param currentOrder
+     */
+    void showArriveEnd(Order currentOrder);
+
+    /**
+     * 更新司机到上车点的路径
+     * @param locationInfo
+     * @param order
+     */
+    void updateDriver2StartRoute(LocationInfo locationInfo, Order order);
+
+    /**
+     * 更新司机到终点的路径
+     * @param locationInfo
+     * @param order
+     */
+    void updateDriver2EndRoute(LocationInfo locationInfo, Order order);
 }

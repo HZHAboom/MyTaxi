@@ -26,6 +26,8 @@ public class API {
     public static final String UPLOAD_LOCATION = "/f34e28da5816433d/updateUserLocation";
     //  呼叫司机
     public static final String CALL_DRIVER = "/f34e28da5816433d/callDriver";
+    //  取消订单
+    public static final String CANCEL_ORDER = "/f34e28da5816433d/cancelOrder";
 
     /**
      * 配置域名信息

@@ -198,13 +198,58 @@ public class MainManagerImpl implements IMainManager{
 
                 IResponse response = mHttpClient.post(request,false);
                 OrderStateOptResponse orderStateOptResponse = new OrderStateOptResponse();
+                if (response.getCode() == BaseBizResponse.STATE_OK){
+                    //解析订单信息
+                    orderStateOptResponse =
+                            new Gson().fromJson(response.getData(),
+                                    OrderStateOptResponse.class);
+                }
                 orderStateOptResponse.setCode(response.getCode());
                 orderStateOptResponse.setState(OrderStateOptResponse.ORDER_STATE_CREATE);
-                LogUtil.d(TAG,"call driver: " + response.getData());
+                LogUtil.d(TAG,"call driver: " + orderStateOptResponse.getData());
                 LogUtil.d(TAG,"call driver phone: " + phone);
                 return orderStateOptResponse;
             }
         });
+    }
+
+    @Override
+    public void cancelOrder(final String orderId) {
+        RxBus.getInstance().chainProcess(new Function() {
+            @Override
+            public Object apply(Object o) throws Exception {
+                IRequest request = new BaseRequest(API.Config.getDomain()
+                        + API.CANCEL_ORDER);
+                request.setBody("id",orderId);
+                IResponse response = mHttpClient.post(request,false);
+                OrderStateOptResponse orderStateOptResponse = new OrderStateOptResponse();
+                orderStateOptResponse.setCode(response.getCode());
+                orderStateOptResponse.setState(OrderStateOptResponse.ORDER_STATE_CANCEL);
+
+                LogUtil.d(TAG,"cancel order: " + response.getData());
+                return orderStateOptResponse;
+            }
+        });
+    }
+
+    @Override
+    public boolean isLogin() {
+        //获取本地登录信息
+        Account account =
+                (Account) mSharedPreferencesDao.get(SharedPreferencesDao.KEY_ACCOUNT,
+                        Account.class);
+
+        //登录是否过期
+        boolean tokenValid = false;
+
+        //检查token是否过期
+        if (account!=null){
+            if (account.getExpired() > System.currentTimeMillis()){
+                //token 有效
+                tokenValid = true;
+            }
+        }
+        return tokenValid;
     }
 
 }

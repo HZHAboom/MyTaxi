@@ -74,6 +74,13 @@ public interface ILbsLayer {
      */
     void moveCamera(LocationInfo locationInfo1, LocationInfo locationInfo2);
 
+    /**
+     * 移动相机到某个点
+     * @param locationInfo
+     * @param scale 缩放系数
+     */
+    void moveCameraToPoint(LocationInfo locationInfo, int scale);
+
     interface CommonLocationChangeListener{
         void onLocationChanged(LocationInfo locationInfo);
         void onLocation(LocationInfo locationInfo);

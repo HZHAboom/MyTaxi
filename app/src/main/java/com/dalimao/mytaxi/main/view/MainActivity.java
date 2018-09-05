@@ -35,6 +35,7 @@ import com.dalimao.mytaxi.common.util.LogUtil;
 import com.dalimao.mytaxi.common.util.ToastUtils;
 import com.dalimao.mytaxi.main.model.IMainManager;
 import com.dalimao.mytaxi.main.model.MainManagerImpl;
+import com.dalimao.mytaxi.main.model.bean.Order;
 import com.dalimao.mytaxi.main.presenter.IMainPresenter;
 import com.dalimao.mytaxi.main.presenter.MainPresenterImpl;
 
@@ -88,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements IMainView {
     private Button mBtnCancel;
     private Button mBtnPay;
     private float mCost;
+    private Bitmap mLocationBit;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -152,6 +154,8 @@ public class MainActivity extends AppCompatActivity implements IMainView {
 
         //初始化其他地图元素
         initViews();
+
+        mIsLogin = mPresenter.isLogin();
     }
 
     private void initViews() {
@@ -172,6 +176,10 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                     case R.id.btn_call_driver:
                         //呼叫司机
                         callDriver();
+                        break;
+                    case R.id.btn_cancel:
+                        //取消
+                        cancel();
                         break;
                 }
             }
@@ -208,6 +216,30 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                 });
             }
         });
+    }
+
+    /**
+     * 取消
+     */
+    private void cancel() {
+        if (!mBtnCall.isEnabled()){
+            //说明已经点了呼叫
+            showCanceling();
+            mPresenter.cancel();
+        }else{
+            //知识显示了路径信息，还没点击呼叫，恢复UI即可
+            restoreUI();
+        }
+    }
+
+    /**
+     * 显示取消中
+     */
+    private void showCanceling() {
+        mTips.setVisibility(View.GONE);
+        mLoadingArea.setVisibility(View.VISIBLE);
+        mLoadingText.setText(getString(R.string.canceling));
+        mBtnCancel.setEnabled(false);
     }
 
     /**
@@ -292,6 +324,10 @@ public class MainActivity extends AppCompatActivity implements IMainView {
      */
     private void showOptArea() {
         mOptArea.setVisibility(View.VISIBLE);
+        mLoadingArea.setVisibility(View.GONE);
+        mTips.setVisibility(View.VISIBLE);
+        mBtnCall.setEnabled(true);
+        mBtnCancel.setEnabled(true);
     }
 
     private void addEndMarker() {
@@ -388,6 +424,7 @@ public class MainActivity extends AppCompatActivity implements IMainView {
     @Override
     public void showLoginSuc() {
         ToastUtils.show(MainActivity.this,getString(R.string.login_suc));
+        mIsLogin = true;
     }
 
     @Override
@@ -396,6 +433,7 @@ public class MainActivity extends AppCompatActivity implements IMainView {
             case IMainManager.SERVER_FAIL:
                 ToastUtils.show(MainActivity.this,getString(R.string.error_server));
                 showPhoneInputDialog();
+                mIsLogin = false;
                 break;
             case IMainManager.TOKEN_INVALID:
                 ToastUtils.show(MainActivity.this,getString(R.string.token_invalid));
@@ -415,6 +453,10 @@ public class MainActivity extends AppCompatActivity implements IMainView {
         }
     }
 
+    /**
+     * 显示司机的标志
+     * @param locationInfo
+     */
     @Override
     public void showLocationChange(LocationInfo locationInfo) {
         if (mDriverBit == null || mDriverBit.isRecycled()){
@@ -438,6 +480,183 @@ public class MainActivity extends AppCompatActivity implements IMainView {
         mLoadingArea.setVisibility(View.GONE);
         mTips.setVisibility(View.VISIBLE);
         mTips.setText(getString(R.string.show_call_fail));
+        mBtnCall.setEnabled(true);
+    }
+
+    /**
+     * 取消订单成功
+     */
+    @Override
+    public void showCancelSuc() {
+        ToastUtils.show(this,getString(R.string.order_cancel_suc));
+        restoreUI();
+    }
+
+    /**
+     * 恢复UI
+     */
+    private void restoreUI() {
+        //  清除地图上所有标记：路径信息、起点、终点
+        mLbsLayer.clearAllMarkers();
+        //  添加定位标记
+        addLocationMarker();
+        //  恢复地图视野
+        mLbsLayer.moveCameraToPoint(mStartLocation,17);
+        //  获取附近司机
+        getNearDrivers(mStartLocation.getLatitude(),mStartLocation.getLongitude());
+        //  隐藏操作栏
+        hideOptArea();
+    }
+
+    private void hideOptArea() {
+        mOptArea.setVisibility(View.GONE);
+    }
+
+    private void addLocationMarker() {
+        if (mLocationBit == null || mLocationBit.isRecycled()){
+            mLocationBit = BitmapFactory.decodeResource(getResources(),
+                    R.mipmap.navi_map_gps_locked);
+        }
+        mLbsLayer.addOrUpdateMarker(mStartLocation,mLocationBit);
+    }
+
+    /**
+     * 取消订单失败
+     */
+    @Override
+    public void showCancelFail() {
+        ToastUtils.show(this,getString(R.string.order_cancel_error));
+        mBtnCancel.setEnabled(true);
+    }
+
+    @Override
+    public void showDriverAcceptOrder(final Order order) {
+        //提示信息
+        ToastUtils.show(this,getString(R.string.driver_accept_order));
+
+        //清除地图标记
+        mLbsLayer.clearAllMarkers();
+        /**
+         * 添加司机标记
+         */
+        final LocationInfo driverLocation =
+                new LocationInfo(order.getDriverLatitude(),
+                        order.getDriverLongitude());
+        showLocationChange(driverLocation);
+        //显示我的位置
+        addLocationMarker();
+        /**
+         * 显示司机到乘客的路径
+         */
+        mLbsLayer.driverRoute(driverLocation,
+                mStartLocation,
+                Color.BLUE,
+                new ILbsLayer.OnRouteCompleteListener() {
+                    @Override
+                    public void onComplete(RouteInfo result) {
+                        //地图聚焦到司机和我的位置
+                        mLbsLayer.moveCamera(mStartLocation,driverLocation);
+                        //显示司机、路径信息
+                        StringBuilder stringBuilder = new StringBuilder();
+                        stringBuilder.append("司机: ")
+                                .append(order.getDriverName())
+                                .append(", 车牌: ")
+                                .append(order.getCarNo())
+                                .append(", 预计: ")
+                                .append(result.getDuration())
+                                .append("分钟到达");
+                        mTips.setText(stringBuilder.toString());
+                    }
+                });
+    }
+
+    /**
+     * 提示司机到达
+     */
+    @Override
+    public void showDriverArriveStart(Order currentOrder) {
+        String arriveTemp = getString(R.string.driver_arrive);
+        mTips.setText(String.format(arriveTemp,
+                currentOrder.getDriverName(),
+                currentOrder.getCarNo()));
+    }
+
+    /**
+     * 显示开始行程
+     * @param currentOrder
+     */
+    @Override
+    public void showStartDrive(Order currentOrder) {
+        LocationInfo locationInfo =
+                new LocationInfo(currentOrder.getDriverLatitude(),currentOrder.getDriverLongitude());
+        // 路径规划绘制
+        updateDriver2EndRoute(locationInfo,currentOrder);
+        // 隐藏按钮
+        mBtnCancel.setVisibility(View.GONE);
+        mBtnCall.setVisibility(View.GONE);
+    }
+
+    /**
+     * 司机到上车地点的路径绘制
+     * @param locationInfo
+     * @param order
+     */
+    @Override
+    public void updateDriver2StartRoute(LocationInfo locationInfo, final Order order) {
+        mLbsLayer.clearAllMarkers();
+        addLocationMarker();
+        showLocationChange(locationInfo);
+        mLbsLayer.driverRoute(locationInfo, mStartLocation, Color.GREEN, new ILbsLayer.OnRouteCompleteListener() {
+            @Override
+            public void onComplete(RouteInfo result) {
+                String tipsTemp = getString(R.string.accept_info);
+                mTips.setText(String.format(tipsTemp,
+                        order.getDriverName(),
+                        order.getCarNo(),
+                        result.getDistance(),
+                        result.getDuration()));
+            }
+        });
+    }
+
+    /**
+     * 司机到终点的路径绘制或更新
+     * @param locationInfo
+     * @param order
+     */
+    @Override
+    public void updateDriver2EndRoute(LocationInfo locationInfo, final Order order) {
+        mLbsLayer.clearAllMarkers();
+        addEndMarker();
+        showLocationChange(locationInfo);
+        mLbsLayer.driverRoute(locationInfo, mEndLocation, Color.GREEN, new ILbsLayer.OnRouteCompleteListener() {
+            @Override
+            public void onComplete(RouteInfo result) {
+                String tipsTemp = getString(R.string.driving_info);
+                mTips.setText(String.format(tipsTemp,
+                        order.getDriverName(),
+                        order.getCarNo(),
+                        result.getDistance(),
+                        result.getDuration()));
+            }
+        });
+        // 聚焦
+        mLbsLayer.moveCamera(locationInfo,mEndLocation);
+    }
+
+    /**
+     * 显示到达终点
+     * @param order
+     */
+    @Override
+    public void showArriveEnd(Order order) {
+        String tipsTemp = getString(R.string.pay_info);
+        String tips = String.format(tipsTemp,
+                order.getCost(),
+                order.getDriverName(),
+                order.getCarNo());
+        mTips.setText(tips);
+        mBtnPay.setVisibility(View.VISIBLE);
     }
 
 }
