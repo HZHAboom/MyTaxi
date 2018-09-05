@@ -181,6 +181,10 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                         //取消
                         cancel();
                         break;
+                    case R.id.btn_pay:
+                        //支付
+                        pay();
+                        break;
                 }
             }
         };
@@ -218,6 +222,14 @@ public class MainActivity extends AppCompatActivity implements IMainView {
         });
     }
 
+
+    private void pay() {
+        mLoadingArea.setVisibility(View.VISIBLE);
+        mTips.setVisibility(View.GONE);
+        mLoadingText.setText(getString(R.string.paying));
+        mPresenter.pay();
+    }
+
     /**
      * 取消
      */
@@ -227,7 +239,7 @@ public class MainActivity extends AppCompatActivity implements IMainView {
             showCanceling();
             mPresenter.cancel();
         }else{
-            //知识显示了路径信息，还没点击呼叫，恢复UI即可
+            //只是显示了路径信息，还没点击呼叫，恢复UI即可
             restoreUI();
         }
     }
@@ -642,6 +654,25 @@ public class MainActivity extends AppCompatActivity implements IMainView {
         });
         // 聚焦
         mLbsLayer.moveCamera(locationInfo,mEndLocation);
+    }
+
+    /**
+     * 显示支付成功
+     * @param currentOrder
+     */
+    @Override
+    public void showPaySuc(Order currentOrder) {
+        restoreUI();
+        ToastUtils.show(this,getString(R.string.pay_suc));
+    }
+
+    /**
+     * 显示支付失败
+     */
+    @Override
+    public void showPayFail() {
+        restoreUI();
+        ToastUtils.show(this,getString(R.string.pay_fail));
     }
 
     /**

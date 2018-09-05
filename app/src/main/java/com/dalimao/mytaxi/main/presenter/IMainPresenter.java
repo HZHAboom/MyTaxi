@@ -37,4 +37,9 @@ public interface IMainPresenter {
     void cancel();
 
     boolean isLogin();
+
+    /**
+     * 支付
+     */
+    void pay();
 }

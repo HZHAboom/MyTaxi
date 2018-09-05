@@ -35,4 +35,10 @@ public interface IMainManager {
     void cancelOrder(String orderId);
 
     boolean isLogin();
+
+    /**
+     * 支付
+     * @param orderId
+     */
+    void pay(String orderId);
 }

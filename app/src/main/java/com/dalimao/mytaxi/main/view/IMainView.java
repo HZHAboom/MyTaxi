@@ -83,4 +83,15 @@ public interface IMainView{
      * @param order
      */
     void updateDriver2EndRoute(LocationInfo locationInfo, Order order);
+
+    /**
+     * 支付成功
+     * @param currentOrder
+     */
+    void showPaySuc(Order currentOrder);
+
+    /**
+     * 显示支付失败
+     */
+    void showPayFail();
 }

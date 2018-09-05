@@ -252,4 +252,24 @@ public class MainManagerImpl implements IMainManager{
         return tokenValid;
     }
 
+    @Override
+    public void pay(final String orderId) {
+        RxBus.getInstance().chainProcess(new Function() {
+            @Override
+            public Object apply(Object o) throws Exception {
+                IRequest request = new BaseRequest(API.Config.getDomain() +
+                        API.PAY);
+                request.setBody("id",orderId);
+
+                IResponse response = mHttpClient.post(request,false);
+                OrderStateOptResponse orderStateOptResponse = new OrderStateOptResponse();
+                orderStateOptResponse.setCode(response.getCode());
+                orderStateOptResponse.setState(OrderStateOptResponse.PAY);
+
+                LogUtil.d(TAG,"pay order: " + response.getData());
+                return orderStateOptResponse;
+            }
+        });
+    }
+
 }

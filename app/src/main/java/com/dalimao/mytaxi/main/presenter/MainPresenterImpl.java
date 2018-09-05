@@ -82,6 +82,13 @@ public class MainPresenterImpl implements IMainPresenter {
         return mMainManager.isLogin();
     }
 
+    @Override
+    public void pay() {
+        if (mCurrentOrder!=null){
+            mMainManager.pay(mCurrentOrder.getOrderId());
+        }
+    }
+
     @RegisterBus
     public void loginByTokenResponse(LoginResponse response){
         switch (response.getCode()){
@@ -154,6 +161,13 @@ public class MainPresenterImpl implements IMainPresenter {
             //到达终点
             mCurrentOrder = response.getData();
             mView.showArriveEnd(mCurrentOrder);
+        }else if (response.getState() == OrderStateOptResponse.PAY){
+            //支付
+            if (response.getCode() == BaseBizResponse.STATE_OK){
+                mView.showPaySuc(mCurrentOrder);
+            }else{
+                mView.showPayFail();
+            }
         }
     }
 }
