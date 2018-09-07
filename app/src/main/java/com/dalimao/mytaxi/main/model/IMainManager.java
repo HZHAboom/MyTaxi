@@ -41,4 +41,9 @@ public interface IMainManager {
      * @param orderId
      */
     void pay(String orderId);
+
+    /**
+     * 获取正在进行中的订单
+     */
+    void getProcessingOrder();
 }

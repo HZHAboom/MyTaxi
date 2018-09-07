@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.dalimao.mytaxi.MyTaxiApplication;
@@ -61,6 +62,7 @@ import cn.bmob.v3.BmobInstallation;
 public class MainActivity extends AppCompatActivity implements IMainView {
 
     private static final String TAG = "MainActivity";
+    private static final String LOCATION_END = "10000end";
     private static final int READ_PHONE_STATE_REQUEST_CODE = 100;
     private IMainPresenter mPresenter;
     private ILbsLayer mLbsLayer;
@@ -68,6 +70,7 @@ public class MainActivity extends AppCompatActivity implements IMainView {
     private String mPushKey;
 
     //起点与终点
+    private LinearLayout ll_selectArea;
     private AutoCompleteTextView mStartEdit;
     private AutoCompleteTextView mEndEdit;
     private PoiAdapter mEndAdapter;
@@ -90,6 +93,7 @@ public class MainActivity extends AppCompatActivity implements IMainView {
     private Button mBtnPay;
     private float mCost;
     private Bitmap mLocationBit;
+    private boolean mIsLocate;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,9 +127,6 @@ public class MainActivity extends AppCompatActivity implements IMainView {
 
             @Override
             public void onLocation(LocationInfo locationInfo) {
-                // 首次定位，添加当前位置的标记
-                mLbsLayer.addOrUpdateMarker(locationInfo,
-                        BitmapFactory.decodeResource(getResources(),R.mipmap.navi_map_gps_locked));
                 // 记录起点
                 mStartLocation = locationInfo;
                 // 设置标题
@@ -136,6 +137,11 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                 getNearDrivers(locationInfo.getLatitude(),locationInfo.getLongitude());
                 //上报当前位置
                 updateLocationToServer(locationInfo);
+                // 首次定位，添加当前位置的标记
+                addLocationMarker();
+                mIsLocate = true;
+                //获取进行中的订单
+                getProcessingOrder();
             }
         });
         //添加地图到容器
@@ -158,7 +164,20 @@ public class MainActivity extends AppCompatActivity implements IMainView {
         mIsLogin = mPresenter.isLogin();
     }
 
+    /**
+     * 获取正在进行中的订单
+     */
+    private void getProcessingOrder() {
+        /**
+         * 满足：已经登录、已经定位两个条件，执行getProcessingOrder
+         */
+        if (mIsLogin && mIsLocate){
+            mPresenter.getProcessingOrder();
+        }
+    }
+
     private void initViews() {
+        ll_selectArea = (LinearLayout) findViewById(R.id.select_area);
         mStartEdit = (AutoCompleteTextView) findViewById(R.id.start);
         mEndEdit = (AutoCompleteTextView) findViewById(R.id.end);
         mCity = (TextView) findViewById(R.id.city);
@@ -296,27 +315,14 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                 DevUtil.closeInputMethod(MainActivity.this);
                 //记录终点
                 mEndLocation = results.get(position);
+                mEndLocation.setKey(LOCATION_END);
                 //绘制路径
-                showRoute(mStartLocation,mEndLocation);
-            }
-        });
-        mEndAdapter.notifyDataSetChanged();
-    }
-
-    //绘制起点终点路径
-    private void showRoute(final LocationInfo startLocation, final LocationInfo endLocation) {
-        mLbsLayer.clearAllMarkers();
-        addStartMarker();
-        addEndMarker();
-        mLbsLayer.driverRoute(startLocation,
-                endLocation,
-                Color.GREEN,
-                new ILbsLayer.OnRouteCompleteListener() {
+                showRoute(mStartLocation, mEndLocation, new ILbsLayer.OnRouteCompleteListener() {
                     @Override
                     public void onComplete(RouteInfo result) {
                         LogUtil.d(TAG,"driverRoute: " + result);
 
-                        mLbsLayer.moveCamera(startLocation,endLocation);
+                        mLbsLayer.moveCamera(mStartLocation,mEndLocation);
                         //显示操作区
                         showOptArea();
                         mCost = result.getTaxiCost();
@@ -329,6 +335,20 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                         mTips.setText(infoString);
                     }
                 });
+            }
+        });
+        mEndAdapter.notifyDataSetChanged();
+    }
+
+    //绘制起点终点路径
+    private void showRoute(final LocationInfo startLocation, final LocationInfo endLocation,ILbsLayer.OnRouteCompleteListener listener) {
+        mLbsLayer.clearAllMarkers();
+        addStartMarker();
+        addEndMarker();
+        mLbsLayer.driverRoute(startLocation,
+                endLocation,
+                Color.GREEN,
+                listener);
     }
 
     /**
@@ -336,10 +356,14 @@ public class MainActivity extends AppCompatActivity implements IMainView {
      */
     private void showOptArea() {
         mOptArea.setVisibility(View.VISIBLE);
+        ll_selectArea.setVisibility(View.GONE);
         mLoadingArea.setVisibility(View.GONE);
         mTips.setVisibility(View.VISIBLE);
         mBtnCall.setEnabled(true);
         mBtnCancel.setEnabled(true);
+        mBtnCancel.setVisibility(View.VISIBLE);
+        mBtnCall.setVisibility(View.VISIBLE);
+        mBtnPay.setVisibility(View.GONE);
     }
 
     private void addEndMarker() {
@@ -437,6 +461,11 @@ public class MainActivity extends AppCompatActivity implements IMainView {
     public void showLoginSuc() {
         ToastUtils.show(MainActivity.this,getString(R.string.login_suc));
         mIsLogin = true;
+        if (mStartLocation!=null){
+            updateLocationToServer(mStartLocation);
+        }
+        //获取正在进行中的订单
+        getProcessingOrder();
     }
 
     @Override
@@ -479,12 +508,40 @@ public class MainActivity extends AppCompatActivity implements IMainView {
 
     /**
      * 呼叫司机成功发出
+     * @param order
      */
     @Override
-    public void showCallDriverSuc() {
+    public void showCallDriverSuc(Order order) {
         mLoadingArea.setVisibility(View.GONE);
         mTips.setVisibility(View.VISIBLE);
         mTips.setText(getString(R.string.show_call_suc));
+        //显示操作区
+        showOptArea();
+        //显示路径信息
+        if (order.getEndLongitude()!=0 ||
+                order.getEndLatitude()!=0){
+            mEndLocation = new LocationInfo(order.getEndLatitude(),order.getEndLongitude());
+            mEndLocation.setKey(LOCATION_END);
+            //绘制路径
+            showRoute(mStartLocation, mEndLocation, new ILbsLayer.OnRouteCompleteListener() {
+                @Override
+                public void onComplete(RouteInfo result) {
+                    LogUtil.d(TAG,"driverRoute: " + result);
+
+                    mLbsLayer.moveCamera(mStartLocation,mEndLocation);
+                    mCost = result.getTaxiCost();
+                    String infoString = getString(R.string.route_info);
+                    infoString = String.format(infoString,
+                            new Float(result.getDistance()).intValue(),
+                            mCost,
+                            result.getDuration());
+                    mTips.setVisibility(View.VISIBLE);
+                    mTips.setText(infoString);
+                    mBtnCall.setEnabled(false);
+                }
+            });
+        }
+        LogUtil.d(TAG,"showCallDriverSuc: " + order);
     }
 
     @Override
@@ -522,6 +579,7 @@ public class MainActivity extends AppCompatActivity implements IMainView {
 
     private void hideOptArea() {
         mOptArea.setVisibility(View.GONE);
+        ll_selectArea.setVisibility(View.VISIBLE);
     }
 
     private void addLocationMarker() {
@@ -578,6 +636,10 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                                 .append(result.getDuration())
                                 .append("分钟到达");
                         mTips.setText(stringBuilder.toString());
+                        //显示操作区
+                        showOptArea();
+                        //呼叫不可点击
+                        mBtnCall.setEnabled(false);
                     }
                 });
     }
@@ -587,10 +649,24 @@ public class MainActivity extends AppCompatActivity implements IMainView {
      */
     @Override
     public void showDriverArriveStart(Order currentOrder) {
+        showOptArea();
         String arriveTemp = getString(R.string.driver_arrive);
         mTips.setText(String.format(arriveTemp,
                 currentOrder.getDriverName(),
                 currentOrder.getCarNo()));
+        mBtnCall.setEnabled(false);
+        mBtnCancel.setEnabled(true);
+        //清除地图标记
+        mLbsLayer.clearAllMarkers();
+        /**
+         * 添加司机标记
+         */
+        LocationInfo driverLocation =
+                new LocationInfo(currentOrder.getDriverLatitude(),
+                        currentOrder.getDriverLongitude());
+        showLocationChange(driverLocation);
+        //显示我的位置
+        addLocationMarker();
     }
 
     /**
@@ -638,9 +714,16 @@ public class MainActivity extends AppCompatActivity implements IMainView {
      */
     @Override
     public void updateDriver2EndRoute(LocationInfo locationInfo, final Order order) {
+        // 终点位置从order中获取
+        if (order.getEndLongitude()!=0 ||
+                order.getEndLatitude()!=0){
+            mEndLocation = new LocationInfo(order.getEndLatitude(),order.getEndLongitude());
+            mEndLocation.setKey(LOCATION_END);
+        }
         mLbsLayer.clearAllMarkers();
         addEndMarker();
         showLocationChange(locationInfo);
+        addLocationMarker();
         mLbsLayer.driverRoute(locationInfo, mEndLocation, Color.GREEN, new ILbsLayer.OnRouteCompleteListener() {
             @Override
             public void onComplete(RouteInfo result) {
@@ -650,6 +733,10 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                         order.getCarNo(),
                         result.getDistance(),
                         result.getDuration()));
+                //显示操作区
+                showOptArea();
+                mBtnCancel.setEnabled(false);
+                mBtnCall.setEnabled(false);
             }
         });
         // 聚焦
@@ -686,6 +773,10 @@ public class MainActivity extends AppCompatActivity implements IMainView {
                 order.getCost(),
                 order.getDriverName(),
                 order.getCarNo());
+        //显示操作区
+        showOptArea();
+        mBtnCancel.setVisibility(View.GONE);
+        mBtnCall.setVisibility(View.GONE);
         mTips.setText(tips);
         mBtnPay.setVisibility(View.VISIBLE);
     }

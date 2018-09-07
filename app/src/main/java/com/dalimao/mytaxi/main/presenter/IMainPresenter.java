@@ -42,4 +42,10 @@ public interface IMainPresenter {
      * 支付
      */
     void pay();
+
+    /**
+     * 获取正在进行中的订单
+     */
+    void getProcessingOrder();
+
 }

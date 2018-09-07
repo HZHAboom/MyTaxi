@@ -89,6 +89,14 @@ public class MainPresenterImpl implements IMainPresenter {
         }
     }
 
+    /**
+     * 获取正在进行中的订单
+     */
+    @Override
+    public void getProcessingOrder() {
+        mMainManager.getProcessingOrder();
+    }
+
     @RegisterBus
     public void loginByTokenResponse(LoginResponse response){
         switch (response.getCode()){
@@ -132,9 +140,9 @@ public class MainPresenterImpl implements IMainPresenter {
         if (response.getState() == OrderStateOptResponse.ORDER_STATE_CREATE){
             //呼叫司机
             if (response.getCode() == BaseBizResponse.STATE_OK){
-                mView.showCallDriverSuc();
                 //  保存当前的订单
                 mCurrentOrder = response.getData();
+                mView.showCallDriverSuc(mCurrentOrder);
             }else{
                 mView.showCallDriverFail();
             }
